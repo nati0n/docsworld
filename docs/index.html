@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>SmallWorld Documentation &#8212; SmallWorld 1.0.4 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=4f649999" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=039e1c02" />
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=535dfbd7"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    <link rel="author" title="About these documents" href="about.html" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Getting Started" href="tutorial/index.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="smallworld-documentation">
+<h1>SmallWorld Documentation<a class="headerlink" href="#smallworld-documentation" title="Permalink to this heading">¶</a></h1>
+<p>SmallWorld is an environment for streamlined harnessing of binaries for the
+purpose of dynamic analysis. If you have code that you got from somewhere and
+you’d like to run it and analyze those runs to understand what that code does
+or if it has bugs, then you should try SmallWorld!</p>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tutorial/index.html">Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorial/smallworld-at-a-glance.html">SmallWorld at a Glance</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial/quick-install-guide.html">Quick Install Guide</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial/harnessing-a-simple-program.html">Harnessing a Simple Program</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial/mapping-memory.html">Mapping Memory</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial/local-types-and-the-heap.html">Local Types and the Heap</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial/modeling-and-hooking.html">Modeling and Hooking</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial/analyses.html">Analyses</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial/fuzzing.html">Fuzzing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial/putting-it-all-together.html">Putting it all Together</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial/next-steps.html">Next Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="usage/index.html">Using SmallWorld</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="usage/state.html">State</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage/emulators.html">Emulators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage/hinting.html">Hinting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage/analyses.html">Analyses</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage/platforms.html">Supported Platforms</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage/platforms.html#specific-emulator-notes">Specific Emulator Notes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage/platforms.html#specific-isa-notes">Specific ISA Notes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage/platforms.html#floating-point-and-vector-support">Floating Point and Vector Support</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="reference/index.html">Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="reference/smallworld.html">smallworld</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/smallworld.logging.html">smallworld.logging</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/smallworld.hinting.html">smallworld.hinting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/smallworld.platforms.html">smallworld.platforms</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/smallworld.emulators.html">smallworld.emulators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/smallworld.state.html">smallworld.state</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/smallworld.state.cpus.html">smallworld.state.cpus</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/smallworld.state.models.html">smallworld.state.models</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/smallworld.state.memory.html">smallworld.state.memory</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/smallworld.state.memory.stack.html">smallworld.state.memory.stack</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/smallworld.state.memory.heap.html">smallworld.state.memory.heap</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/smallworld.state.memory.code.html">smallworld.state.memory.code</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/smallworld.analyses.html">smallworld.analyses</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/smallworld.exceptions.html">smallworld.exceptions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/smallworld.extern.ctypes.html">smallworld.extern.ctypes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="about.html">About</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="about.html#disclaimer">Disclaimer</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="#">SmallWorld</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tutorial/index.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage/index.html">Using SmallWorld</a></li>
+<li class="toctree-l1"><a class="reference internal" href="reference/index.html">Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="about.html">About</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="#">Documentation overview</a><ul>
+      <li>Next: <a href="tutorial/index.html" title="next chapter">Getting Started</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2023, MIT Lincoln Laboratory.
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>State &#8212; SmallWorld 1.0.4 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=4f649999" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=039e1c02" />
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=535dfbd7"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+    <link rel="author" title="About these documents" href="../about.html" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Emulators" href="emulators.html" />
+    <link rel="prev" title="Using SmallWorld" href="index.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="state">
+<span id="id1"></span><h1>State<a class="headerlink" href="#state" title="Permalink to this heading">¶</a></h1>
+<p>The State in SmallWorld is an object representing the values for registers and
+memory for some particular CPU. It is used to to set up and initialize these
+values prior to running an anlaysis or emulation, but also serves as a place
+where final values after emulation can be copied into for inspection.  This
+provides two benefits.</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li><p>The state has a generic interface that is not tied to any particular
+emulator or analytic back-end. So pre-emulation code such as
+initialization, and any post-emulation analysis or triage can be written
+to be generic.</p></li>
+<li><p>The state can be applied to (copied into) or loaded from (copied out of)
+any emulator meeting SmallWorld’s <a class="reference internal" href="emulators.html#emulators"><span class="std std-ref">Emulators</span></a> interface.</p></li>
+</ol>
+</div></blockquote>
+<p>At the lowest level, there are the objects <code class="docutils literal notranslate"><span class="pre">Register</span></code>, <code class="docutils literal notranslate"><span class="pre">RegisterAlias</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">Memory</span></code>. These are subclasses of abstract class <code class="docutils literal notranslate"><span class="pre">Value</span></code>.  All of these
+objects have getters and setters to obtain and set values. They also include
+methods for initialization, for <strong>apply</strong> -ing their values (writing them) into
+an emulator and for <strong>load</strong> -ing them out of an emulator.</p>
+<p>A <code class="docutils literal notranslate"><span class="pre">Register</span></code> represents a specific CPU register, such as <code class="docutils literal notranslate"><span class="pre">edx</span></code> and includes
+a name, width in bytes, and a concrete value, if available.</p>
+<p>A <code class="docutils literal notranslate"><span class="pre">RegisterAlias</span></code> is a convenience object allow one, e.g., to specify the 32
+or 16-bit subregisters <code class="docutils literal notranslate"><span class="pre">eax</span></code> and <cite>ax`</cite> of the x86_64 base register <code class="docutils literal notranslate"><span class="pre">rax</span></code>.</p>
+<p>A <code class="docutils literal notranslate"><span class="pre">Memory</span></code> object represents a region of bytes in memory, and includes a
+start address, a size, and an indication of the byte-ordering (big-endian or
+litte-endian).</p>
+<p>The state also includes <code class="docutils literal notranslate"><span class="pre">Code</span></code> as well as two subclasses of <code class="docutils literal notranslate"><span class="pre">Memory</span></code>:
+<code class="docutils literal notranslate"><span class="pre">Stack</span></code> and <code class="docutils literal notranslate"><span class="pre">Heap</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">Code</span></code> objects contain data representing executable code for analysis but
+also include information about where to load and how to execute.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">Stack</span></code>, additionally, has additional methods for <strong>push</strong> -ing and
+<strong>pop</strong> -ping values. This permits a natural interface for setting up or
+accessing stack arguments and variables.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">Heap</span></code> adds support for <strong>malloc</strong> and <strong>free</strong> simplifying the creation
+of dynamic variables and structures in memory.</p>
+<p>Finally, a <code class="docutils literal notranslate"><span class="pre">State</span></code> object is a container for one or more of the above, and,
+thus, represents all mutable values in registers and memory. Heap and stack can
+be <strong>map</strong> -ped into the state after being created.</p>
+<p>Here is some example code using the <code class="docutils literal notranslate"><span class="pre">State</span></code> interface:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">smallworld</span>
+<span class="n">state</span> <span class="o">=</span> <span class="n">smallworld</span><span class="o">.</span><span class="n">cpus</span><span class="o">.</span><span class="n">AMD64CPUState</span><span class="p">()</span>
+<span class="n">zero</span> <span class="o">=</span> <span class="n">smallworld</span><span class="o">.</span><span class="n">initializers</span><span class="o">.</span><span class="n">ZeroInitializer</span><span class="p">()</span>
+<span class="n">state</span><span class="o">.</span><span class="n">initialize</span><span class="p">(</span><span class="n">zero</span><span class="p">)</span>
+<span class="n">state</span><span class="o">.</span><span class="n">rax</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="mh">0x11111111</span><span class="p">)</span>
+<span class="n">stack</span> <span class="o">=</span> <span class="n">smallworld</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">Stack</span><span class="p">(</span><span class="n">address</span><span class="o">=</span><span class="mh">0x2000</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mh">0x1000</span><span class="p">)</span>
+<span class="n">stack</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="mh">0x231</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+<span class="n">state</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">stack</span><span class="p">)</span>
+<span class="n">state</span><span class="o">.</span><span class="n">rsp</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">stack</span><span class="o">.</span><span class="n">address</span><span class="p">)</span>
+<span class="n">emu</span> <span class="o">=</span> <span class="n">smallworld</span><span class="o">.</span><span class="n">emulators</span><span class="o">.</span><span class="n">UnicornEmulator</span><span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">arch</span><span class="p">,</span> <span class="n">state</span><span class="o">.</span><span class="n">mode</span><span class="p">)</span>
+<span class="n">state</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">emu</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>In this code we create a 64-bit x86 state, zero all of its registers, set a
+value for <code class="docutils literal notranslate"><span class="pre">rax</span></code>, create a stack, push a value to it, and set the stack
+pointer in the state. Finally, we apply all of this constructed state to the
+emulator.</p>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">SmallWorld</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../tutorial/index.html">Getting Started</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Using SmallWorld</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">State</a></li>
+<li class="toctree-l2"><a class="reference internal" href="emulators.html">Emulators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="hinting.html">Hinting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="analyses.html">Analyses</a></li>
+<li class="toctree-l2"><a class="reference internal" href="platforms.html">Supported Platforms</a></li>
+<li class="toctree-l2"><a class="reference internal" href="platforms.html#specific-emulator-notes">Specific Emulator Notes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="platforms.html#specific-isa-notes">Specific ISA Notes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="platforms.html#floating-point-and-vector-support">Floating Point and Vector Support</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../about.html">About</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">Using SmallWorld</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">Using SmallWorld</a></li>
+      <li>Next: <a href="emulators.html" title="next chapter">Emulators</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2023, MIT Lincoln Laboratory.
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

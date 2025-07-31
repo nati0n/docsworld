@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Harnessing a Simple Program &#8212; SmallWorld 1.0.4 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=4f649999" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=039e1c02" />
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=535dfbd7"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+    <link rel="author" title="About these documents" href="../about.html" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Mapping Memory" href="mapping-memory.html" />
+    <link rel="prev" title="Quick Install Guide" href="quick-install-guide.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="harnessing-a-simple-program">
+<h1>Harnessing a Simple Program<a class="headerlink" href="#harnessing-a-simple-program" title="Permalink to this heading">¶</a></h1>
+<p>In this quick tutorial you will be guided through the steps to harness a very
+simple snippet of binary code. Here it is, weighing in at only two lines of x86
+assembly.</p>
+<div class="highlight-NASM notranslate"><div class="highlight"><pre><span></span><span class="k">BITS</span><span class="w"> </span><span class="mi">64</span><span class="c1">;</span>
+<span class="c1">; This is a function that just squares a number. </span>
+<span class="c1">; It takes a 32-bit argument in edi and returns the 32-bit product in eax.</span>
+<span class="c1">; If we can&#39;t run this, we can&#39;t run anything.</span>
+<span class="w">        </span><span class="nf">imul</span><span class="w">    </span><span class="nb">edi</span><span class="p">,</span><span class="w"> </span><span class="nb">edi</span>
+<span class="w">        </span><span class="nf">mov</span><span class="w">     </span><span class="nb">eax</span><span class="p">,</span><span class="w"> </span><span class="nb">edi</span>
+</pre></div>
+</div>
+<p>This example can be found in the <code class="docutils literal notranslate"><span class="pre">tests</span></code> directory of the repository, in the
+file <code class="docutils literal notranslate"><span class="pre">square.amd64.s</span></code>. There are a number of other small assembly examples there
+along with it. There is also a <code class="docutils literal notranslate"><span class="pre">Makefile</span></code> in that directory and you will have
+to run <code class="docutils literal notranslate"><span class="pre">make</span></code> there in order to generate the binary code used in this and
+other tutorials involving those tests. Once you have run <code class="docutils literal notranslate"><span class="pre">make</span></code>, the
+corresponding binary, which we will analyze in this tutorial, will be in the
+file <code class="docutils literal notranslate"><span class="pre">square.amd64.bin</span></code>.</p>
+<p>A reasonable first step in harnessing is to run SmallWorld’s basic harness
+script which assumes nothing about the code: <code class="docutils literal notranslate"><span class="pre">basic_harness.py</span></code> (which also
+lives in the <code class="docutils literal notranslate"><span class="pre">examples</span></code> directory). That script is fairly simple, so let’s have
+a look at it.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">typing</span>
+
+<span class="kn">import</span> <span class="nn">smallworld</span>
+
+<span class="c1"># setup logging and hinting</span>
+<span class="n">smallworld</span><span class="o">.</span><span class="n">logging</span><span class="o">.</span><span class="n">setup_logging</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+<span class="n">smallworld</span><span class="o">.</span><span class="n">hinting</span><span class="o">.</span><span class="n">setup_hinting</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">)</span>
+
+<span class="c1"># configure the platform for emulation</span>
+<span class="n">platform</span> <span class="o">=</span> <span class="n">smallworld</span><span class="o">.</span><span class="n">platforms</span><span class="o">.</span><span class="n">Platform</span><span class="p">(</span>
+    <span class="n">smallworld</span><span class="o">.</span><span class="n">platforms</span><span class="o">.</span><span class="n">Architecture</span><span class="o">.</span><span class="n">X86_64</span><span class="p">,</span> <span class="n">smallworld</span><span class="o">.</span><span class="n">platforms</span><span class="o">.</span><span class="n">Byteorder</span><span class="o">.</span><span class="n">LITTLE</span>
+<span class="p">)</span>
+
+<span class="c1"># create a machine</span>
+<span class="n">machine</span> <span class="o">=</span> <span class="n">smallworld</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">Machine</span><span class="p">()</span>
+
+<span class="c1"># create a CPU and add it to the machine</span>
+<span class="n">cpu</span> <span class="o">=</span> <span class="n">smallworld</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">cpus</span><span class="o">.</span><span class="n">CPU</span><span class="o">.</span><span class="n">for_platform</span><span class="p">(</span><span class="n">platform</span><span class="p">)</span>
+
+<span class="c1"># create an executable and add it to the machine</span>
+<span class="n">code</span> <span class="o">=</span> <span class="n">smallworld</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">memory</span><span class="o">.</span><span class="n">code</span><span class="o">.</span><span class="n">Executable</span><span class="o">.</span><span class="n">from_filepath</span><span class="p">(</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">address</span><span class="o">=</span><span class="mh">0x1000</span>
+<span class="p">)</span>
+<span class="n">machine</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">code</span><span class="p">)</span>
+
+
+<span class="n">machine</span><span class="o">.</span><span class="n">add_exit_point</span><span class="p">(</span><span class="n">code</span><span class="o">.</span><span class="n">address</span> <span class="o">+</span> <span class="n">code</span><span class="o">.</span><span class="n">get_capacity</span><span class="p">())</span>
+<span class="c1"># set the instruction pointer to the entrypoint of our executable</span>
+<span class="n">cpu</span><span class="o">.</span><span class="n">rip</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">code</span><span class="o">.</span><span class="n">address</span><span class="p">)</span>
+
+<span class="n">analyses</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">List</span><span class="p">[</span>
+    <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="n">smallworld</span><span class="o">.</span><span class="n">analyses</span><span class="o">.</span><span class="n">Analysis</span><span class="p">,</span> <span class="n">smallworld</span><span class="o">.</span><span class="n">analyses</span><span class="o">.</span><span class="n">Filter</span><span class="p">]</span>
+<span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">smallworld</span><span class="o">.</span><span class="n">analyses</span><span class="o">.</span><span class="n">Colorizer</span><span class="p">(),</span> <span class="n">smallworld</span><span class="o">.</span><span class="n">analyses</span><span class="o">.</span><span class="n">ColorizerSummary</span><span class="p">()]</span>
+
+<span class="n">machine</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">cpu</span><span class="p">)</span>
+
+<span class="c1"># analyze</span>
+<span class="n">smallworld</span><span class="o">.</span><span class="n">analyze</span><span class="p">(</span><span class="n">machine</span><span class="p">,</span> <span class="n">analyses</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>After the imports, the script sets up logging and hinting. Logging is probably
+self-explanatory (change level to <code class="docutils literal notranslate"><span class="pre">logging.DEBUG</span></code> to get lots of low-level
+output). <strong>Hinting</strong> is a SmallWorld concept. Hints are described in detail in
+<a class="reference internal" href="../usage/hinting.html#hinting"><span class="std std-ref">Hinting</span></a> but the basic idea is that SmallWorld includes various
+<strong>analyses</strong> that are intended to provide hints that can guide the creation of
+a code harness. You can read more about analyses in <a class="reference internal" href="../usage/analyses.html#analyses"><span class="std std-ref">Analyses</span></a>.</p>
+<p>Next in the script, a cpu state is created. This is another SmallWorld concept
+described in <a class="reference internal" href="../usage/state.html#state"><span class="std std-ref">State</span></a> in detail. You can think of it as a place to set up
+registers and memory (which have convenient stack and heap abstractions) with
+specific values in a way that is agnostic to details about any particular
+dynamic analysis employing a specific emulator or engine. So, the same
+<code class="docutils literal notranslate"><span class="pre">state</span></code> could be applied to a Unicorn emulator or a angr engine or …</p>
+<p>In the script, we employ an <strong>initializer</strong> to zero out all the registers in
+the state and then load the binary code from a file and map it into the state.</p>
+<p>Finally, the script runs various analyses on the code and cpu state in order to
+help explicate how it might be better harnessed. This is the last line in the
+script <code class="docutils literal notranslate"><span class="pre">smallworld.analyze(state)</span></code> and it is what will generate hints.</p>
+<p>Note that all of this setup performed is entirely generic; this script assumes
+nothing about the binary to be harnessed. To run the script we just put the
+binary at the end of the commandline <code class="docutils literal notranslate"><span class="pre">python3</span> <span class="pre">basic_harnesss.py</span> <span class="pre">square.amd64.bin</span></code>.</p>
+<p>Here is what that outputs</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ python3 examples/basic_harness.py tests/square/square.amd64.bin
+/home/na28046/.local/lib/python3.10/site-packages/google/protobuf/runtime_version.py:98: UserWarning: Protobuf gencode version 5.28.2 is exactly one major version older than the runtime version 6.30.2 at angr/protos/primitives.proto. Please update the gencode to avoid compatibility violations in the next runtime release.
+  warnings.warn(
+/home/na28046/.local/lib/python3.10/site-packages/google/protobuf/runtime_version.py:98: UserWarning: Protobuf gencode version 5.28.2 is exactly one major version older than the runtime version 6.30.2 at angr/protos/function.proto. Please update the gencode to avoid compatibility violations in the next runtime release.
+  warnings.warn(
+/home/na28046/.local/lib/python3.10/site-packages/google/protobuf/runtime_version.py:98: UserWarning: Protobuf gencode version 5.28.2 is exactly one major version older than the runtime version 6.30.2 at angr/protos/cfg.proto. Please update the gencode to avoid compatibility violations in the next runtime release.
+  warnings.warn(
+/home/na28046/.local/lib/python3.10/site-packages/google/protobuf/runtime_version.py:98: UserWarning: Protobuf gencode version 5.28.2 is exactly one major version older than the runtime version 6.30.2 at angr/protos/xrefs.proto. Please update the gencode to avoid compatibility violations in the next runtime release.
+  warnings.warn(
+/home/na28046/.local/lib/python3.10/site-packages/google/protobuf/runtime_version.py:98: UserWarning: Protobuf gencode version 5.28.2 is exactly one major version older than the runtime version 6.30.2 at angr/protos/variables.proto. Please update the gencode to avoid compatibility violations in the next runtime release.
+  warnings.warn(
+[+] -------------------------
+[+] micro exec #1
+[+] instr_count = 0
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;read-def&quot;, &quot;pc&quot;: 4096, &quot;micro_exec_num&quot;: 1, &quot;instruction_num&quot;: 0, &quot;dynamic_value&quot;: 10593900825472401408, &quot;color&quot;: 10593900825472401408, &quot;size&quot;: 4, &quot;use&quot;: true, &quot;new&quot;: true, &quot;reg_name&quot;: &quot;edi&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueHint&quot;}}
+[+] single step at 0x1000: &lt;CsInsn 0x1000 [0fafff]: imul edi, edi&gt;
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;write-def&quot;, &quot;pc&quot;: 4096, &quot;micro_exec_num&quot;: 1, &quot;instruction_num&quot;: 0, &quot;dynamic_value&quot;: 9302382461390422016, &quot;color&quot;: 9302382461390422016, &quot;size&quot;: 4, &quot;use&quot;: false, &quot;new&quot;: true, &quot;reg_name&quot;: &quot;edi&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueHint&quot;}}
+[+] instr_count = 1
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;read-flow&quot;, &quot;pc&quot;: 4099, &quot;micro_exec_num&quot;: 1, &quot;instruction_num&quot;: 1, &quot;dynamic_value&quot;: 9302382461390422016, &quot;color&quot;: 9302382461390422016, &quot;size&quot;: 4, &quot;use&quot;: true, &quot;new&quot;: false, &quot;reg_name&quot;: &quot;edi&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueHint&quot;}}
+[+] single step at 0x1003: &lt;CsInsn 0x1003 [89f8]: mov eax, edi&gt;
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;write-copy&quot;, &quot;pc&quot;: 4099, &quot;micro_exec_num&quot;: 1, &quot;instruction_num&quot;: 1, &quot;dynamic_value&quot;: 9302382461390422016, &quot;color&quot;: 9302382461390422016, &quot;size&quot;: 4, &quot;use&quot;: false, &quot;new&quot;: false, &quot;reg_name&quot;: &quot;eax&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueHint&quot;}}
+[+] instr_count = 2
+[+] -------------------------
+[+] micro exec #2
+[+] instr_count = 0
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;read-def&quot;, &quot;pc&quot;: 4096, &quot;micro_exec_num&quot;: 2, &quot;instruction_num&quot;: 0, &quot;dynamic_value&quot;: 520914507199938560, &quot;color&quot;: 520914507199938560, &quot;size&quot;: 4, &quot;use&quot;: true, &quot;new&quot;: true, &quot;reg_name&quot;: &quot;edi&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueHint&quot;}}
+[+] single step at 0x1000: &lt;CsInsn 0x1000 [0fafff]: imul edi, edi&gt;
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;write-def&quot;, &quot;pc&quot;: 4096, &quot;micro_exec_num&quot;: 2, &quot;instruction_num&quot;: 0, &quot;dynamic_value&quot;: 14536414601127395328, &quot;color&quot;: 14536414601127395328, &quot;size&quot;: 4, &quot;use&quot;: false, &quot;new&quot;: true, &quot;reg_name&quot;: &quot;edi&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueHint&quot;}}
+[+] instr_count = 1
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;read-flow&quot;, &quot;pc&quot;: 4099, &quot;micro_exec_num&quot;: 2, &quot;instruction_num&quot;: 1, &quot;dynamic_value&quot;: 14536414601127395328, &quot;color&quot;: 14536414601127395328, &quot;size&quot;: 4, &quot;use&quot;: true, &quot;new&quot;: false, &quot;reg_name&quot;: &quot;edi&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueHint&quot;}}
+[+] single step at 0x1003: &lt;CsInsn 0x1003 [89f8]: mov eax, edi&gt;
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;write-copy&quot;, &quot;pc&quot;: 4099, &quot;micro_exec_num&quot;: 2, &quot;instruction_num&quot;: 1, &quot;dynamic_value&quot;: 14536414601127395328, &quot;color&quot;: 14536414601127395328, &quot;size&quot;: 4, &quot;use&quot;: false, &quot;new&quot;: false, &quot;reg_name&quot;: &quot;eax&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueHint&quot;}}
+[+] instr_count = 2
+[+] -------------------------
+[+] micro exec #3
+[+] instr_count = 0
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;read-def&quot;, &quot;pc&quot;: 4096, &quot;micro_exec_num&quot;: 3, &quot;instruction_num&quot;: 0, &quot;dynamic_value&quot;: 1037872301548240896, &quot;color&quot;: 1037872301548240896, &quot;size&quot;: 4, &quot;use&quot;: true, &quot;new&quot;: true, &quot;reg_name&quot;: &quot;edi&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueHint&quot;}}
+[+] single step at 0x1000: &lt;CsInsn 0x1000 [0fafff]: imul edi, edi&gt;
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;write-def&quot;, &quot;pc&quot;: 4096, &quot;micro_exec_num&quot;: 3, &quot;instruction_num&quot;: 0, &quot;dynamic_value&quot;: 6179300496797335552, &quot;color&quot;: 6179300496797335552, &quot;size&quot;: 4, &quot;use&quot;: false, &quot;new&quot;: true, &quot;reg_name&quot;: &quot;edi&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueHint&quot;}}
+[+] instr_count = 1
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;read-flow&quot;, &quot;pc&quot;: 4099, &quot;micro_exec_num&quot;: 3, &quot;instruction_num&quot;: 1, &quot;dynamic_value&quot;: 6179300496797335552, &quot;color&quot;: 6179300496797335552, &quot;size&quot;: 4, &quot;use&quot;: true, &quot;new&quot;: false, &quot;reg_name&quot;: &quot;edi&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueHint&quot;}}
+[+] single step at 0x1003: &lt;CsInsn 0x1003 [89f8]: mov eax, edi&gt;
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;write-copy&quot;, &quot;pc&quot;: 4099, &quot;micro_exec_num&quot;: 3, &quot;instruction_num&quot;: 1, &quot;dynamic_value&quot;: 6179300496797335552, &quot;color&quot;: 6179300496797335552, &quot;size&quot;: 4, &quot;use&quot;: false, &quot;new&quot;: false, &quot;reg_name&quot;: &quot;eax&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueHint&quot;}}
+[+] instr_count = 2
+[+] -------------------------
+[+] micro exec #4
+[+] instr_count = 0
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;read-def&quot;, &quot;pc&quot;: 4096, &quot;micro_exec_num&quot;: 4, &quot;instruction_num&quot;: 0, &quot;dynamic_value&quot;: 2310751813235638272, &quot;color&quot;: 2310751813235638272, &quot;size&quot;: 4, &quot;use&quot;: true, &quot;new&quot;: true, &quot;reg_name&quot;: &quot;edi&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueHint&quot;}}
+[+] single step at 0x1000: &lt;CsInsn 0x1000 [0fafff]: imul edi, edi&gt;
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;write-def&quot;, &quot;pc&quot;: 4096, &quot;micro_exec_num&quot;: 4, &quot;instruction_num&quot;: 0, &quot;dynamic_value&quot;: 2560094352898523136, &quot;color&quot;: 2560094352898523136, &quot;size&quot;: 4, &quot;use&quot;: false, &quot;new&quot;: true, &quot;reg_name&quot;: &quot;edi&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueHint&quot;}}
+[+] instr_count = 1
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;read-flow&quot;, &quot;pc&quot;: 4099, &quot;micro_exec_num&quot;: 4, &quot;instruction_num&quot;: 1, &quot;dynamic_value&quot;: 2560094352898523136, &quot;color&quot;: 2560094352898523136, &quot;size&quot;: 4, &quot;use&quot;: true, &quot;new&quot;: false, &quot;reg_name&quot;: &quot;edi&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueHint&quot;}}
+[+] single step at 0x1003: &lt;CsInsn 0x1003 [89f8]: mov eax, edi&gt;
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;write-copy&quot;, &quot;pc&quot;: 4099, &quot;micro_exec_num&quot;: 4, &quot;instruction_num&quot;: 1, &quot;dynamic_value&quot;: 2560094352898523136, &quot;color&quot;: 2560094352898523136, &quot;size&quot;: 4, &quot;use&quot;: false, &quot;new&quot;: false, &quot;reg_name&quot;: &quot;eax&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueHint&quot;}}
+[+] instr_count = 2
+[+] -------------------------
+[+] micro exec #5
+[+] instr_count = 0
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;read-def&quot;, &quot;pc&quot;: 4096, &quot;micro_exec_num&quot;: 5, &quot;instruction_num&quot;: 0, &quot;dynamic_value&quot;: 4200596891592818688, &quot;color&quot;: 4200596891592818688, &quot;size&quot;: 4, &quot;use&quot;: true, &quot;new&quot;: true, &quot;reg_name&quot;: &quot;edi&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueHint&quot;}}
+[+] single step at 0x1000: &lt;CsInsn 0x1000 [0fafff]: imul edi, edi&gt;
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;write-def&quot;, &quot;pc&quot;: 4096, &quot;micro_exec_num&quot;: 5, &quot;instruction_num&quot;: 0, &quot;dynamic_value&quot;: 10468425486223540224, &quot;color&quot;: 10468425486223540224, &quot;size&quot;: 4, &quot;use&quot;: false, &quot;new&quot;: true, &quot;reg_name&quot;: &quot;edi&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueHint&quot;}}
+[+] instr_count = 1
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;read-flow&quot;, &quot;pc&quot;: 4099, &quot;micro_exec_num&quot;: 5, &quot;instruction_num&quot;: 1, &quot;dynamic_value&quot;: 10468425486223540224, &quot;color&quot;: 10468425486223540224, &quot;size&quot;: 4, &quot;use&quot;: true, &quot;new&quot;: false, &quot;reg_name&quot;: &quot;edi&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueHint&quot;}}
+[+] single step at 0x1003: &lt;CsInsn 0x1003 [89f8]: mov eax, edi&gt;
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;write-copy&quot;, &quot;pc&quot;: 4099, &quot;micro_exec_num&quot;: 5, &quot;instruction_num&quot;: 1, &quot;dynamic_value&quot;: 10468425486223540224, &quot;color&quot;: 10468425486223540224, &quot;size&quot;: 4, &quot;use&quot;: false, &quot;new&quot;: false, &quot;reg_name&quot;: &quot;eax&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueHint&quot;}}
+[+] instr_count = 2
+[+] -------------------------
+[+] micro exec #6
+[+] instr_count = 0
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;read-def&quot;, &quot;pc&quot;: 4096, &quot;micro_exec_num&quot;: 6, &quot;instruction_num&quot;: 0, &quot;dynamic_value&quot;: 7928558999065067520, &quot;color&quot;: 7928558999065067520, &quot;size&quot;: 4, &quot;use&quot;: true, &quot;new&quot;: true, &quot;reg_name&quot;: &quot;edi&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueHint&quot;}}
+[+] single step at 0x1000: &lt;CsInsn 0x1000 [0fafff]: imul edi, edi&gt;
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;write-def&quot;, &quot;pc&quot;: 4096, &quot;micro_exec_num&quot;: 6, &quot;instruction_num&quot;: 0, &quot;dynamic_value&quot;: 17077435867552808960, &quot;color&quot;: 17077435867552808960, &quot;size&quot;: 4, &quot;use&quot;: false, &quot;new&quot;: true, &quot;reg_name&quot;: &quot;edi&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueHint&quot;}}
+[+] instr_count = 1
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;read-flow&quot;, &quot;pc&quot;: 4099, &quot;micro_exec_num&quot;: 6, &quot;instruction_num&quot;: 1, &quot;dynamic_value&quot;: 17077435867552808960, &quot;color&quot;: 17077435867552808960, &quot;size&quot;: 4, &quot;use&quot;: true, &quot;new&quot;: false, &quot;reg_name&quot;: &quot;edi&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueHint&quot;}}
+[+] single step at 0x1003: &lt;CsInsn 0x1003 [89f8]: mov eax, edi&gt;
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;write-copy&quot;, &quot;pc&quot;: 4099, &quot;micro_exec_num&quot;: 6, &quot;instruction_num&quot;: 1, &quot;dynamic_value&quot;: 17077435867552808960, &quot;color&quot;: 17077435867552808960, &quot;size&quot;: 4, &quot;use&quot;: false, &quot;new&quot;: false, &quot;reg_name&quot;: &quot;eax&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueHint&quot;}}
+[+] instr_count = 2
+[+] -------------------------
+[+] micro exec #7
+[+] instr_count = 0
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;read-def&quot;, &quot;pc&quot;: 4096, &quot;micro_exec_num&quot;: 7, &quot;instruction_num&quot;: 0, &quot;dynamic_value&quot;: 6217772060760866816, &quot;color&quot;: 6217772060760866816, &quot;size&quot;: 4, &quot;use&quot;: true, &quot;new&quot;: true, &quot;reg_name&quot;: &quot;edi&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueHint&quot;}}
+[+] single step at 0x1000: &lt;CsInsn 0x1000 [0fafff]: imul edi, edi&gt;
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;write-def&quot;, &quot;pc&quot;: 4096, &quot;micro_exec_num&quot;: 7, &quot;instruction_num&quot;: 0, &quot;dynamic_value&quot;: 18068901854921621504, &quot;color&quot;: 18068901854921621504, &quot;size&quot;: 4, &quot;use&quot;: false, &quot;new&quot;: true, &quot;reg_name&quot;: &quot;edi&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueHint&quot;}}
+[+] instr_count = 1
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;read-flow&quot;, &quot;pc&quot;: 4099, &quot;micro_exec_num&quot;: 7, &quot;instruction_num&quot;: 1, &quot;dynamic_value&quot;: 18068901854921621504, &quot;color&quot;: 18068901854921621504, &quot;size&quot;: 4, &quot;use&quot;: true, &quot;new&quot;: false, &quot;reg_name&quot;: &quot;edi&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueHint&quot;}}
+[+] single step at 0x1003: &lt;CsInsn 0x1003 [89f8]: mov eax, edi&gt;
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;write-copy&quot;, &quot;pc&quot;: 4099, &quot;micro_exec_num&quot;: 7, &quot;instruction_num&quot;: 1, &quot;dynamic_value&quot;: 18068901854921621504, &quot;color&quot;: 18068901854921621504, &quot;size&quot;: 4, &quot;use&quot;: false, &quot;new&quot;: false, &quot;reg_name&quot;: &quot;eax&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueHint&quot;}}
+[+] instr_count = 2
+[+] -------------------------
+[+] micro exec #8
+[+] instr_count = 0
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;read-def&quot;, &quot;pc&quot;: 4096, &quot;micro_exec_num&quot;: 8, &quot;instruction_num&quot;: 0, &quot;dynamic_value&quot;: 9280604928500301824, &quot;color&quot;: 9280604928500301824, &quot;size&quot;: 4, &quot;use&quot;: true, &quot;new&quot;: true, &quot;reg_name&quot;: &quot;edi&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueHint&quot;}}
+[+] single step at 0x1000: &lt;CsInsn 0x1000 [0fafff]: imul edi, edi&gt;
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;write-def&quot;, &quot;pc&quot;: 4096, &quot;micro_exec_num&quot;: 8, &quot;instruction_num&quot;: 0, &quot;dynamic_value&quot;: 17220918389766094848, &quot;color&quot;: 17220918389766094848, &quot;size&quot;: 4, &quot;use&quot;: false, &quot;new&quot;: true, &quot;reg_name&quot;: &quot;edi&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueHint&quot;}}
+[+] instr_count = 1
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;read-flow&quot;, &quot;pc&quot;: 4099, &quot;micro_exec_num&quot;: 8, &quot;instruction_num&quot;: 1, &quot;dynamic_value&quot;: 17220918389766094848, &quot;color&quot;: 17220918389766094848, &quot;size&quot;: 4, &quot;use&quot;: true, &quot;new&quot;: false, &quot;reg_name&quot;: &quot;edi&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueHint&quot;}}
+[+] single step at 0x1003: &lt;CsInsn 0x1003 [89f8]: mov eax, edi&gt;
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;write-copy&quot;, &quot;pc&quot;: 4099, &quot;micro_exec_num&quot;: 8, &quot;instruction_num&quot;: 1, &quot;dynamic_value&quot;: 17220918389766094848, &quot;color&quot;: 17220918389766094848, &quot;size&quot;: 4, &quot;use&quot;: false, &quot;new&quot;: false, &quot;reg_name&quot;: &quot;eax&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueHint&quot;}}
+[+] instr_count = 2
+[+] -------------------------
+[+] micro exec #9
+[+] instr_count = 0
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;read-def&quot;, &quot;pc&quot;: 4096, &quot;micro_exec_num&quot;: 9, &quot;instruction_num&quot;: 0, &quot;dynamic_value&quot;: 4780529390515650560, &quot;color&quot;: 4780529390515650560, &quot;size&quot;: 4, &quot;use&quot;: true, &quot;new&quot;: true, &quot;reg_name&quot;: &quot;edi&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueHint&quot;}}
+[+] single step at 0x1000: &lt;CsInsn 0x1000 [0fafff]: imul edi, edi&gt;
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;write-def&quot;, &quot;pc&quot;: 4096, &quot;micro_exec_num&quot;: 9, &quot;instruction_num&quot;: 0, &quot;dynamic_value&quot;: 2047011310540947456, &quot;color&quot;: 2047011310540947456, &quot;size&quot;: 4, &quot;use&quot;: false, &quot;new&quot;: true, &quot;reg_name&quot;: &quot;edi&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueHint&quot;}}
+[+] instr_count = 1
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;read-flow&quot;, &quot;pc&quot;: 4099, &quot;micro_exec_num&quot;: 9, &quot;instruction_num&quot;: 1, &quot;dynamic_value&quot;: 2047011310540947456, &quot;color&quot;: 2047011310540947456, &quot;size&quot;: 4, &quot;use&quot;: true, &quot;new&quot;: false, &quot;reg_name&quot;: &quot;edi&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueHint&quot;}}
+[+] single step at 0x1003: &lt;CsInsn 0x1003 [89f8]: mov eax, edi&gt;
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;write-copy&quot;, &quot;pc&quot;: 4099, &quot;micro_exec_num&quot;: 9, &quot;instruction_num&quot;: 1, &quot;dynamic_value&quot;: 2047011310540947456, &quot;color&quot;: 2047011310540947456, &quot;size&quot;: 4, &quot;use&quot;: false, &quot;new&quot;: false, &quot;reg_name&quot;: &quot;eax&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueHint&quot;}}
+[+] instr_count = 2
+[+] -------------------------
+[+] micro exec #10
+[+] instr_count = 0
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;read-def&quot;, &quot;pc&quot;: 4096, &quot;micro_exec_num&quot;: 10, &quot;instruction_num&quot;: 0, &quot;dynamic_value&quot;: 14077934998422290432, &quot;color&quot;: 14077934998422290432, &quot;size&quot;: 4, &quot;use&quot;: true, &quot;new&quot;: true, &quot;reg_name&quot;: &quot;edi&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueHint&quot;}}
+[+] single step at 0x1000: &lt;CsInsn 0x1000 [0fafff]: imul edi, edi&gt;
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;write-def&quot;, &quot;pc&quot;: 4096, &quot;micro_exec_num&quot;: 10, &quot;instruction_num&quot;: 0, &quot;dynamic_value&quot;: 18435414675832176640, &quot;color&quot;: 18435414675832176640, &quot;size&quot;: 4, &quot;use&quot;: false, &quot;new&quot;: true, &quot;reg_name&quot;: &quot;edi&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueHint&quot;}}
+[+] instr_count = 1
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;read-flow&quot;, &quot;pc&quot;: 4099, &quot;micro_exec_num&quot;: 10, &quot;instruction_num&quot;: 1, &quot;dynamic_value&quot;: 18435414675832176640, &quot;color&quot;: 18435414675832176640, &quot;size&quot;: 4, &quot;use&quot;: true, &quot;new&quot;: false, &quot;reg_name&quot;: &quot;edi&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueHint&quot;}}
+[+] single step at 0x1003: &lt;CsInsn 0x1003 [89f8]: mov eax, edi&gt;
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;write-copy&quot;, &quot;pc&quot;: 4099, &quot;micro_exec_num&quot;: 10, &quot;instruction_num&quot;: 1, &quot;dynamic_value&quot;: 18435414675832176640, &quot;color&quot;: 18435414675832176640, &quot;size&quot;: 4, &quot;use&quot;: false, &quot;new&quot;: false, &quot;reg_name&quot;: &quot;eax&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueHint&quot;}}
+[+] instr_count = 2
+[+] -------------------------
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;write-def-summary&quot;, &quot;pc&quot;: 4096, &quot;color&quot;: 2, &quot;size&quot;: 4, &quot;use&quot;: false, &quot;new&quot;: true, &quot;count&quot;: 10, &quot;num_micro_executions&quot;: 10, &quot;reg_name&quot;: &quot;edi&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueSummaryHint&quot;}}
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;read-def-summary&quot;, &quot;pc&quot;: 4096, &quot;color&quot;: 1, &quot;size&quot;: 4, &quot;use&quot;: true, &quot;new&quot;: true, &quot;count&quot;: 10, &quot;num_micro_executions&quot;: 10, &quot;reg_name&quot;: &quot;edi&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueSummaryHint&quot;}}
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;write-copy-summary&quot;, &quot;pc&quot;: 4099, &quot;color&quot;: 2, &quot;size&quot;: 4, &quot;use&quot;: false, &quot;new&quot;: false, &quot;count&quot;: 10, &quot;num_micro_executions&quot;: 10, &quot;reg_name&quot;: &quot;eax&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueSummaryHint&quot;}}
+[+] {&quot;content&quot;: {&quot;message&quot;: &quot;read-flow-summary&quot;, &quot;pc&quot;: 4099, &quot;color&quot;: 2, &quot;size&quot;: 4, &quot;use&quot;: true, &quot;new&quot;: false, &quot;count&quot;: 10, &quot;num_micro_executions&quot;: 10, &quot;reg_name&quot;: &quot;edi&quot;, &quot;class&quot;: &quot;smallworld.hinting.hints.DynamicRegisterValueSummaryHint&quot;}}
+</pre></div>
+</div>
+<p>We get back one hint per attempt at executing <code class="docutils literal notranslate"><span class="pre">square.amd64.bin</span></code>.  The hint is
+generated by an analysis called <code class="docutils literal notranslate"><span class="pre">input_colorizer</span></code> which attempts to determine
+what registers and instructions are using input values by setting them to
+random values and then observing when those values are used by instructions.
+This is an <code class="docutils literal notranslate"><span class="pre">InputUseHint</span></code> and if we know how to interpret it, it tells us
+that the register <code class="docutils literal notranslate"><span class="pre">edi</span></code> is an input to this snippet of code and should really
+be set explicitly. We can now create a new script <code class="docutils literal notranslate"><span class="pre">square.amd64.py</span></code> which harnesses
+<code class="docutils literal notranslate"><span class="pre">square.amd64.bin</span></code> perfectly.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+<span class="kn">import</span> <span class="nn">smallworld</span>
+
+<span class="c1"># Set up logging and hinting</span>
+<span class="n">smallworld</span><span class="o">.</span><span class="n">logging</span><span class="o">.</span><span class="n">setup_logging</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+<span class="n">smallworld</span><span class="o">.</span><span class="n">hinting</span><span class="o">.</span><span class="n">setup_hinting</span><span class="p">(</span><span class="n">stream</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># Define the platform</span>
+<span class="n">platform</span> <span class="o">=</span> <span class="n">smallworld</span><span class="o">.</span><span class="n">platforms</span><span class="o">.</span><span class="n">Platform</span><span class="p">(</span>
+    <span class="n">smallworld</span><span class="o">.</span><span class="n">platforms</span><span class="o">.</span><span class="n">Architecture</span><span class="o">.</span><span class="n">X86_64</span><span class="p">,</span> <span class="n">smallworld</span><span class="o">.</span><span class="n">platforms</span><span class="o">.</span><span class="n">Byteorder</span><span class="o">.</span><span class="n">LITTLE</span>
+<span class="p">)</span>
+
+<span class="c1"># Create a machine</span>
+<span class="n">machine</span> <span class="o">=</span> <span class="n">smallworld</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">Machine</span><span class="p">()</span>
+
+<span class="c1"># Create a CPU</span>
+<span class="n">cpu</span> <span class="o">=</span> <span class="n">smallworld</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">cpus</span><span class="o">.</span><span class="n">CPU</span><span class="o">.</span><span class="n">for_platform</span><span class="p">(</span><span class="n">platform</span><span class="p">)</span>
+<span class="n">machine</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">cpu</span><span class="p">)</span>
+
+<span class="c1"># Load and add code into the state</span>
+<span class="n">code</span> <span class="o">=</span> <span class="n">smallworld</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">memory</span><span class="o">.</span><span class="n">code</span><span class="o">.</span><span class="n">Executable</span><span class="o">.</span><span class="n">from_filepath</span><span class="p">(</span>
+    <span class="vm">__file__</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;.py&quot;</span><span class="p">,</span> <span class="s2">&quot;.bin&quot;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;.angr&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;.panda&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;.pcode&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
+    <span class="n">address</span><span class="o">=</span><span class="mh">0x1000</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">machine</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">code</span><span class="p">)</span>
+
+<span class="c1"># Set the instruction pointer to the code entrypoint</span>
+<span class="n">cpu</span><span class="o">.</span><span class="n">rip</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">code</span><span class="o">.</span><span class="n">address</span><span class="p">)</span>
+
+<span class="c1"># Initialize argument registers</span>
+<span class="n">cpu</span><span class="o">.</span><span class="n">rdi</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+
+<span class="c1"># Emulate</span>
+<span class="n">emulator</span> <span class="o">=</span> <span class="n">smallworld</span><span class="o">.</span><span class="n">emulators</span><span class="o">.</span><span class="n">UnicornEmulator</span><span class="p">(</span><span class="n">platform</span><span class="p">)</span>
+<span class="n">emulator</span><span class="o">.</span><span class="n">add_exit_point</span><span class="p">(</span><span class="n">cpu</span><span class="o">.</span><span class="n">rip</span><span class="o">.</span><span class="n">get</span><span class="p">()</span> <span class="o">+</span> <span class="n">code</span><span class="o">.</span><span class="n">get_capacity</span><span class="p">())</span>
+<span class="n">final_machine</span> <span class="o">=</span> <span class="n">machine</span><span class="o">.</span><span class="n">emulate</span><span class="p">(</span><span class="n">emulator</span><span class="p">)</span>
+
+<span class="c1"># read out the final state</span>
+<span class="n">cpu</span> <span class="o">=</span> <span class="n">final_machine</span><span class="o">.</span><span class="n">get_cpu</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">hex</span><span class="p">(</span><span class="n">cpu</span><span class="o">.</span><span class="n">eax</span><span class="o">.</span><span class="n">get</span><span class="p">()))</span>
+</pre></div>
+</div>
+<p>To the <code class="docutils literal notranslate"><span class="pre">basic_harness.py</span></code> we have added a line to set the initial value of
+<code class="docutils literal notranslate"><span class="pre">edi</span></code> via the commandline, a new line which simply emulates, and a final line
+to read out the result which is in the register <code class="docutils literal notranslate"><span class="pre">eax</span></code>.</p>
+<p>Here is what running that new harness looks like</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ python3 square.amd64.py 42
+/home/na28046/.local/lib/python3.10/site-packages/google/protobuf/runtime_version.py:98: UserWarning: Protobuf gencode version 5.28.2 is exactly one major version older than the runtime version 6.30.2 at angr/protos/primitives.proto. Please update the gencode to avoid compatibility violations in the next runtime release.
+  warnings.warn(
+/home/na28046/.local/lib/python3.10/site-packages/google/protobuf/runtime_version.py:98: UserWarning: Protobuf gencode version 5.28.2 is exactly one major version older than the runtime version 6.30.2 at angr/protos/function.proto. Please update the gencode to avoid compatibility violations in the next runtime release.
+  warnings.warn(
+/home/na28046/.local/lib/python3.10/site-packages/google/protobuf/runtime_version.py:98: UserWarning: Protobuf gencode version 5.28.2 is exactly one major version older than the runtime version 6.30.2 at angr/protos/cfg.proto. Please update the gencode to avoid compatibility violations in the next runtime release.
+  warnings.warn(
+/home/na28046/.local/lib/python3.10/site-packages/google/protobuf/runtime_version.py:98: UserWarning: Protobuf gencode version 5.28.2 is exactly one major version older than the runtime version 6.30.2 at angr/protos/xrefs.proto. Please update the gencode to avoid compatibility violations in the next runtime release.
+  warnings.warn(
+/home/na28046/.local/lib/python3.10/site-packages/google/protobuf/runtime_version.py:98: UserWarning: Protobuf gencode version 5.28.2 is exactly one major version older than the runtime version 6.30.2 at angr/protos/variables.proto. Please update the gencode to avoid compatibility violations in the next runtime release.
+  warnings.warn(
+[+] starting emulation at 0x1000
+[+] emulation complete
+0x6e4
+</pre></div>
+</div>
+<p>Since <code class="docutils literal notranslate"><span class="pre">42*42=1764</span></code> which is <code class="docutils literal notranslate"><span class="pre">0x6e4</span></code> we have harnessed
+<code class="docutils literal notranslate"><span class="pre">square.amd64.bin</span></code> completely.</p>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">SmallWorld</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Getting Started</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="smallworld-at-a-glance.html">SmallWorld at a Glance</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quick-install-guide.html">Quick Install Guide</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Harnessing a Simple Program</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mapping-memory.html">Mapping Memory</a></li>
+<li class="toctree-l2"><a class="reference internal" href="local-types-and-the-heap.html">Local Types and the Heap</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modeling-and-hooking.html">Modeling and Hooking</a></li>
+<li class="toctree-l2"><a class="reference internal" href="analyses.html">Analyses</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fuzzing.html">Fuzzing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="putting-it-all-together.html">Putting it all Together</a></li>
+<li class="toctree-l2"><a class="reference internal" href="next-steps.html">Next Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../usage/index.html">Using SmallWorld</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../about.html">About</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">Getting Started</a><ul>
+      <li>Previous: <a href="quick-install-guide.html" title="previous chapter">Quick Install Guide</a></li>
+      <li>Next: <a href="mapping-memory.html" title="next chapter">Mapping Memory</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2023, MIT Lincoln Laboratory.
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
